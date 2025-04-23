@@ -230,7 +230,7 @@
                     logger.LogError("Delete Error: {reason}", response.ReasonPhrase);
                 }
 
-                return response.IsError != true;
+                return !response.IsError;
             }
             finally
             {

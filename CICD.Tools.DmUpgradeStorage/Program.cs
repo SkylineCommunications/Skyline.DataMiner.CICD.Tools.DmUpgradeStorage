@@ -35,7 +35,6 @@
         {
             var rootCommand = new RootCommand("This .NET tool allows you to manage .dmupgrade packages in storage.")
             {
-                new InfoCommand(),
                 new UploadCommand(),
                 new DeleteCommand(),
                 new DownloadCommand(), // Contains sub commands
@@ -79,7 +78,6 @@
                         configurationBuilder.AddUserSecrets<BaseCommand>() // For easy testing
                                             .AddEnvironmentVariables();
                     })
-                    .UseCommandHandler<InfoCommand, InfoCommandHandler>()
                     .UseCommandHandler<UploadCommand, UploadCommandHandler>()
                     .UseCommandHandler<DeleteCommand, DeleteCommandHandler>()
                     .UseCommandHandler<DownloadByNameCommand, DownloadByNameCommandHandler>()
