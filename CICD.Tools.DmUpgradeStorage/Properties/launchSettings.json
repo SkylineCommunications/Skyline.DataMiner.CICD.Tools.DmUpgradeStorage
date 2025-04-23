@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "CICD.Tools.AzureUploader": {
+        "commandName": "Project",
+        "commandLineArgs": "info --debug true --"
+        //"commandLineArgs": "download latest-by-tag --debug true -od \"%USERPROFILE%\\Downloads\\BlobStorageDownload\" -pt Rc"
+        //"commandLineArgs": "download by-build-number --debug true -od \"%USERPROFILE%\\Downloads\\BlobStorageDownload\" -bn 56789"
+        //"commandLineArgs": "upload --debug true -df \"%USERPROFILE%\\Downloads\\DataMiner 1.2.3.4-56789 Full Upgrade (rc) GER-1234 PS-56.dmupgrade\""
+    }
+  }
+}
