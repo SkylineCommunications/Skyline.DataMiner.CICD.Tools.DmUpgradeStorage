@@ -1,8 +1,8 @@
-# Skyline.DataMiner.CICD.Tools.AzureUploader
+# Skyline.DataMiner.CICD.Tools.DmUpgradeStorage
 
 ## About
 
-TBD
+This library and .NET tool allows you to manage .dmupgrade packages in storage.
 
 ## Projects
 
