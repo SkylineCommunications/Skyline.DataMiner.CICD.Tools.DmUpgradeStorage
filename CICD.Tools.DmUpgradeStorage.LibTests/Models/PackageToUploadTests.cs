@@ -8,17 +8,6 @@
     [TestClass]
     public class PackageToUploadTests
     {
-        [TestMethod]
-        [DynamicData(nameof(AdditionalData))]
-        public void PackageToUpload_FromFile(string fileName, PackageToUpload? expectedPackage)
-        {
-            // Act
-            PackageToUpload? result = PackageToUpload.FromFile(new FileInfo(fileName));
-
-            // Assert
-            result.Should().BeEquivalentTo(expectedPackage, config: options => options.Excluding(package => package!.PackageFile));
-        }
-
         public static IEnumerable<object?[]> AdditionalData =>
         [
             ["invalid file.dmupgrade", null],
@@ -102,5 +91,16 @@
             ],
 
         ];
+
+        [TestMethod]
+        [DynamicData(nameof(AdditionalData))]
+        public void PackageToUpload_FromFile(string fileName, PackageToUpload? expectedPackage)
+        {
+            // Act
+            PackageToUpload? result = PackageToUpload.FromFile(new FileInfo(fileName));
+
+            // Assert
+            result.Should().BeEquivalentTo(expectedPackage, config: options => options.Excluding(package => package!.PackageFile));
+        }
     }
 }

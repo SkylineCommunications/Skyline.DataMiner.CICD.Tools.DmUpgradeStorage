@@ -35,7 +35,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class DownloadLatestByTagCommandHandler(ILogger<DownloadLatestByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
     {
-        public required IDirectoryInfoIO OutputDirectory { get; set; }
+        public IDirectoryInfoIO OutputDirectory { get; set; }
 
         public override int Invoke(InvocationContext context)
         {

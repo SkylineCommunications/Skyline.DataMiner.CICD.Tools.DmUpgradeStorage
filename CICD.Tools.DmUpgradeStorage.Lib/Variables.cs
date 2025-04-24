@@ -6,9 +6,9 @@
     public static class EnvironmentVariables
     {
         /// <summary>
-        /// The name of the environment variable used to store the connection string for the blob storage.
+        /// The name of the environment variable used to store the account key for the blob storage.
         /// </summary>
-        public const string BlobStorageConnectionString = "BLOBSTORAGE__CONNECTIONSTRING";
+        public const string BlobStorageAccountKey = "BLOBSTORAGE__ACCOUNTKEY";
 
         /// <summary>
         /// The name of the environment variable used to store the account name for the blob storage.
@@ -16,9 +16,9 @@
         public const string BlobStorageAccountName = "BLOBSTORAGE__ACCOUNTNAME";
 
         /// <summary>
-        /// The name of the environment variable used to store the account key for the blob storage.
+        /// The name of the environment variable used to store the connection string for the blob storage.
         /// </summary>
-        public const string BlobStorageAccountKey = "BLOBSTORAGE__ACCOUNTKEY";
+        public const string BlobStorageConnectionString = "BLOBSTORAGE__CONNECTIONSTRING";
 
         /// <summary>
         /// The name of the environment variable used to store the container name for the blob storage.
@@ -28,9 +28,9 @@
 
     internal static class UserSecrets
     {
-        public const string BlobStorageConnectionString = "BLOBSTORAGE:CONNECTIONSTRING";
-        public const string BlobStorageAccountName = "BLOBSTORAGE:ACCOUNTNAME";
         public const string BlobStorageAccountKey = "BLOBSTORAGE:ACCOUNTKEY";
+        public const string BlobStorageAccountName = "BLOBSTORAGE:ACCOUNTNAME";
+        public const string BlobStorageConnectionString = "BLOBSTORAGE:CONNECTIONSTRING";
         public const string BlobStorageContainerName = "BLOBSTORAGE:CONTAINERNAME";
     }
 }

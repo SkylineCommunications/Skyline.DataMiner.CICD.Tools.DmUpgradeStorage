@@ -21,6 +21,38 @@
         void Authenticate(string? connectionString = null, string? accountName = null, string? accountKey = null);
 
         /// <summary>
+        /// Deletes a blob.
+        /// </summary>
+        /// <param name="packageName">The package name.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>True if the blob was successfully deleted; false otherwise.</returns>
+        Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Downloads a package by its name.
+        /// </summary>
+        /// <param name="packageName">The package name.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>The downloaded package, or null if not found.</returns>
+        Task<DownloadedPackage?> DownloadByNameAsync(string packageName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Downloads the latest package matching the specified tag filter.
+        /// </summary>
+        /// <param name="builder">The tag filter builder.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>The latest downloaded package, or null if none found.</returns>
+        Task<DownloadedPackage?> DownloadLatestByTagsAsync(PackageTagFilter builder, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Downloads all packages matching the specified tag filter.
+        /// </summary>
+        /// <param name="filter">The tag filter to apply.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>An asynchronous stream of downloaded packages.</returns>
+        IAsyncEnumerable<ConfiguredTaskAwaitable<DownloadedPackage>> DownloadPackagesByTagsAsync(PackageTagFilter filter, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Sets the container name for subsequent operations.
         /// </summary>
         /// <param name="name">The container name.</param>
@@ -33,37 +65,5 @@
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>True if upload succeeded, false otherwise.</returns>
         Task<bool> UploadAsync(PackageToUpload package, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Downloads a package by its name.
-        /// </summary>
-        /// <param name="packageName">The package name.</param>
-        /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>The downloaded package, or null if not found.</returns>
-        Task<DownloadedPackage?> DownloadByNameAsync(string packageName, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Downloads all packages matching the specified tag filter.
-        /// </summary>
-        /// <param name="filter">The tag filter to apply.</param>
-        /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>An asynchronous stream of downloaded packages.</returns>
-        IAsyncEnumerable<ConfiguredTaskAwaitable<DownloadedPackage>> DownloadPackagesByTagsAsync(PackageTagFilter filter, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Downloads the latest package matching the specified tag filter.
-        /// </summary>
-        /// <param name="builder">The tag filter builder.</param>
-        /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>The latest downloaded package, or null if none found.</returns>
-        Task<DownloadedPackage?> DownloadLatestByTagsAsync(PackageTagFilter builder, CancellationToken cancellationToken = default);
-        
-        /// <summary>
-        /// Deletes a blob.
-        /// </summary>
-        /// <param name="packageName">The package name.</param>
-        /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>True if the blob was successfully deleted; false otherwise.</returns>
-        Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default);
     }
 }

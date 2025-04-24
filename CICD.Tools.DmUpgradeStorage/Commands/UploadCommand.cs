@@ -63,21 +63,21 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class UploadCommandHandler(ILogger<UploadCommandHandler> logger, IDmUpgradeStorageService storageService) : BaseCommandHandler
     {
-        public required IFileInfoIO DmUpgradeFile { get; set; }
-
-        public string? Version { get; set; }
-
         public uint? BuildNumber { get; set; }
 
         public uint? Cu { get; set; }
 
-        public uint? GerritId { get; set; }
+        public IFileInfoIO DmUpgradeFile { get; set; }
 
-        public uint? PatchSet { get; set; }
+        public uint? GerritId { get; set; }
 
         public PackageType? PackageType { get; set; }
 
+        public uint? PatchSet { get; set; }
+
         public UpgradeType? UpgradeType { get; set; }
+
+        public string? Version { get; set; }
 
         public override int Invoke(InvocationContext context)
         {

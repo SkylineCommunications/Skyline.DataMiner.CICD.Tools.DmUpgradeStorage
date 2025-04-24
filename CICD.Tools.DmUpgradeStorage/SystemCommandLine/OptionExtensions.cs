@@ -44,6 +44,30 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine
             return option;
         }
 
+        private static void DirectoryExists(OptionResult result)
+        {
+            foreach (Token token in result.Tokens)
+            {
+                if (!FileSystem.Instance.Directory.Exists(token.Value))
+                {
+                    result.ErrorMessage = result.LocalizationResources.DirectoryDoesNotExist(token.Value);
+                    return;
+                }
+            }
+        }
+
+        private static void FileExists(OptionResult result)
+        {
+            foreach (Token token in result.Tokens)
+            {
+                if (!FileSystem.Instance.File.Exists(token.Value))
+                {
+                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(token.Value);
+                    return;
+                }
+            }
+        }
+
         private static void FileOrDirectoryExists(OptionResult result)
         {
             foreach (Token token in result.Tokens)
@@ -60,30 +84,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine
 
                 result.ErrorMessage = result.LocalizationResources.FileOrDirectoryDoesNotExist(token.Value);
                 return;
-            }
-        }
-
-        private static void FileExists(OptionResult result)
-        {
-            foreach (Token token in result.Tokens)
-            {
-                if (!FileSystem.Instance.File.Exists(token.Value))
-                {
-                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(token.Value);
-                    return;
-                }
-            }
-        }
-
-        private static void DirectoryExists(OptionResult result)
-        {
-            foreach (Token token in result.Tokens)
-            {
-                if (!FileSystem.Instance.Directory.Exists(token.Value))
-                {
-                    result.ErrorMessage = result.LocalizationResources.DirectoryDoesNotExist(token.Value);
-                    return;
-                }
             }
         }
     }

@@ -24,12 +24,11 @@
     /// </summary>
     public class DmUpgradeStorageService : IDmUpgradeStorageService
     {
-        private readonly ILogger<DmUpgradeStorageService> logger;
         private readonly IConfiguration? configuration;
-
-        private bool setupComplete;
-        private string? containerName;
+        private readonly ILogger<DmUpgradeStorageService> logger;
         private BlobServiceClient? client;
+        private string? containerName;
+        private bool setupComplete;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DmUpgradeStorageService"/> class.
@@ -79,6 +78,125 @@
                 }
 
                 throw new InvalidCredentialException("Missing credentials for connecting to the blob storage.");
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(packageName);
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+                BlobClient blob = container.GetBlobClient(packageName);
+                if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    // Blob does not exist, so we can return true.
+                    return true;
+                }
+
+                Response response = await container.DeleteBlobAsync(packageName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (response.IsError)
+                {
+                    logger.LogError("Delete Error: {reason}", response.ReasonPhrase);
+                }
+
+                return !response.IsError;
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<DownloadedPackage?> DownloadByNameAsync(string packageName, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(packageName);
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                BlobClient blob = container.GetBlobClient(packageName);
+                if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    logger.LogError("Package with name {name} does not exist.", packageName);
+                    return null;
+                }
+
+                return await DownloadBlobAsync(blob, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<DownloadedPackage?> DownloadLatestByTagsAsync(PackageTagFilter builder, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                if (builder.IsEmpty())
+                {
+                    logger.LogError("No filter was specified. Please specify at least one filter.");
+                    return null;
+                }
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                var foundBlobs = container.FindBlobsByTagsAsync(builder.Build(), cancellationToken).ConfigureAwait(false);
+
+                return await DownloadLatestBlobAsync(container, foundBlobs, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async IAsyncEnumerable<ConfiguredTaskAwaitable<DownloadedPackage>> DownloadPackagesByTagsAsync(PackageTagFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                if (filter.IsEmpty())
+                {
+                    logger.LogError("No filter was specified. Please specify at least one filter.");
+                    yield break;
+                }
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                var foundBlobs = container.FindBlobsByTagsAsync(filter.Build(), cancellationToken).ConfigureAwait(false);
+
+                await foreach (TaggedBlobItem blobItem in foundBlobs)
+                {
+                    BlobClient blobClient = container.GetBlobClient(blobItem.BlobName);
+                    yield return DownloadBlobAsync(blobClient, cancellationToken).ConfigureAwait(false);
+                }
             }
             finally
             {
@@ -177,118 +295,38 @@
             }
         }
 
-        /// <inheritdoc />
-        public async Task<DownloadedPackage?> DownloadByNameAsync(string packageName, CancellationToken cancellationToken = default)
+        private async Task<DownloadedPackage> DownloadBlobAsync(BlobClient blob, CancellationToken cancellationToken = default)
         {
             DebugLog.Start(logger);
 
             try
             {
-                ArgumentException.ThrowIfNullOrWhiteSpace(packageName);
+                Response<BlobProperties> properties = await blob.GetPropertiesAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                long size = properties.Value.ContentLength;
+                DateTime lastLogged = DateTime.MinValue;
+                Stopwatch sw = Stopwatch.StartNew();
 
-                EnsureSetup();
+                logger.LogDebug("Starting download of {blobName}...", blob.Name);
 
-                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-
-                BlobClient blob = container.GetBlobClient(packageName);
-                if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
+                Response<BlobDownloadStreamingResult> content = await blob.DownloadStreamingAsync(new BlobDownloadOptions
                 {
-                    logger.LogError("Package with name {name} does not exist.", packageName);
-                    return null;
-                }
+                    ProgressHandler = new Progress<long>(l =>
+                    {
+                        var now = DateTime.UtcNow;
+                        if ((now - lastLogged).TotalSeconds >= 3)
+                        {
+                            lastLogged = now;
+                            double percentage = (double)l / size * 100;
+                            logger.LogInformation("Download Progress: {progress:F2}%", percentage);
+                        }
+                    })
+                }, cancellationToken).ConfigureAwait(false);
 
-                return await DownloadBlobAsync(blob, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                DebugLog.End(logger);
-            }
-        }
-        
-        /// <inheritdoc />
-        public async Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default)
-        {
-            DebugLog.Start(logger);
+                sw.Stop();
+                logger.LogInformation("Finished download of {blobName}.", blob.Name);
+                logger.LogDebug("Download took {time}", sw.Elapsed);
 
-            try
-            {
-                ArgumentException.ThrowIfNullOrWhiteSpace(packageName);
-
-                EnsureSetup();
-
-                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-                BlobClient blob = container.GetBlobClient(packageName);
-                if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    // Blob does not exist, so we can return true.
-                    return true;
-                }
-
-                Response response = await container.DeleteBlobAsync(packageName, cancellationToken: cancellationToken).ConfigureAwait(false);
-                if (response.IsError)
-                {
-                    logger.LogError("Delete Error: {reason}", response.ReasonPhrase);
-                }
-
-                return !response.IsError;
-            }
-            finally
-            {
-                DebugLog.End(logger);
-            }
-        }
-
-        /// <inheritdoc />
-        public async IAsyncEnumerable<ConfiguredTaskAwaitable<DownloadedPackage>> DownloadPackagesByTagsAsync(PackageTagFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            DebugLog.Start(logger);
-
-            try
-            {
-                if (filter.IsEmpty())
-                {
-                    logger.LogError("No filter was specified. Please specify at least one filter.");
-                    yield break;
-                }
-
-                EnsureSetup();
-
-                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-
-                var foundBlobs = container.FindBlobsByTagsAsync(filter.Build(), cancellationToken).ConfigureAwait(false);
-
-                await foreach (TaggedBlobItem blobItem in foundBlobs)
-                {
-                    BlobClient blobClient = container.GetBlobClient(blobItem.BlobName);
-                    yield return DownloadBlobAsync(blobClient, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                DebugLog.End(logger);
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<DownloadedPackage?> DownloadLatestByTagsAsync(PackageTagFilter builder, CancellationToken cancellationToken = default)
-        {
-            DebugLog.Start(logger);
-
-            try
-            {
-                if (builder.IsEmpty())
-                {
-                    logger.LogError("No filter was specified. Please specify at least one filter.");
-                    return null;
-                }
-
-                EnsureSetup();
-
-                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-
-                var foundBlobs = container.FindBlobsByTagsAsync(builder.Build(), cancellationToken).ConfigureAwait(false);
-
-                return await DownloadLatestBlobAsync(container, foundBlobs, cancellationToken).ConfigureAwait(false);
+                return new DownloadedPackage(blob.Name, content.Value.Content);
             }
             finally
             {
@@ -323,45 +361,6 @@
 
                 BlobClient blobClient = container.GetBlobClient(latestItem);
                 return await DownloadBlobAsync(blobClient, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                DebugLog.End(logger);
-            }
-        }
-
-        private async Task<DownloadedPackage> DownloadBlobAsync(BlobClient blob, CancellationToken cancellationToken = default)
-        {
-            DebugLog.Start(logger);
-
-            try
-            {
-                Response<BlobProperties> properties = await blob.GetPropertiesAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                long size = properties.Value.ContentLength;
-                DateTime lastLogged = DateTime.MinValue;
-                Stopwatch sw = Stopwatch.StartNew();
-
-                logger.LogDebug("Starting download of {blobName}...", blob.Name);
-
-                Response<BlobDownloadStreamingResult> content = await blob.DownloadStreamingAsync(new BlobDownloadOptions
-                {
-                    ProgressHandler = new Progress<long>(l =>
-                    {
-                        var now = DateTime.UtcNow;
-                        if ((now - lastLogged).TotalSeconds >= 3)
-                        {
-                            lastLogged = now;
-                            double percentage = (double)l / size * 100;
-                            logger.LogInformation("Download Progress: {progress:F2}%", percentage);
-                        }
-                    })
-                }, cancellationToken).ConfigureAwait(false);
-
-                sw.Stop();
-                logger.LogInformation("Finished download of {blobName}.", blob.Name);
-                logger.LogDebug("Download took {time}", sw.Elapsed);
-
-                return new DownloadedPackage(blob.Name, content.Value.Content);
             }
             finally
             {

@@ -16,18 +16,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
         private bool containsExpression;
 
         /// <summary>
-        /// Adds a filter for the package based on the version.
-        /// </summary>
-        /// <param name="version">The version to filter on.</param>
-        /// <returns>A reference to this instance after the with operation has completed.</returns>
-        public PackageTagFilter WithVersion(string version)
-        {
-            AddAndIfNeeded();
-            builder.Equal(Constants.VersionTagName, version);
-            return this;
-        }
-
-        /// <summary>
         /// Adds a filter for the package based on the build number.
         /// </summary>
         /// <param name="buildNumber">The build number to filter on.</param>
@@ -48,18 +36,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
         {
             AddAndIfNeeded();
             builder.Equal(Constants.CuTagName, cuNumber.ToString());
-            return this;
-        }
-
-        /// <summary>
-        /// Adds a filter for the package based on the upgrade type.
-        /// </summary>
-        /// <param name="upgradeType">The upgrade type to filter on.</param>
-        /// <returns>A reference to this instance after the with operation has completed.</returns>
-        public PackageTagFilter WithUpgradeType(UpgradeType upgradeType)
-        {
-            AddAndIfNeeded();
-            builder.Equal(Constants.UpgradeTypeTagName, upgradeType.ToString());
             return this;
         }
 
@@ -99,6 +75,30 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
             return this;
         }
 
+        /// <summary>
+        /// Adds a filter for the package based on the upgrade type.
+        /// </summary>
+        /// <param name="upgradeType">The upgrade type to filter on.</param>
+        /// <returns>A reference to this instance after the with operation has completed.</returns>
+        public PackageTagFilter WithUpgradeType(UpgradeType upgradeType)
+        {
+            AddAndIfNeeded();
+            builder.Equal(Constants.UpgradeTypeTagName, upgradeType.ToString());
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a filter for the package based on the version.
+        /// </summary>
+        /// <param name="version">The version to filter on.</param>
+        /// <returns>A reference to this instance after the with operation has completed.</returns>
+        public PackageTagFilter WithVersion(string version)
+        {
+            AddAndIfNeeded();
+            builder.Equal(Constants.VersionTagName, version);
+            return this;
+        }
+
         internal string Build() => builder.Build();
 
         internal bool IsEmpty() => !containsExpression;
@@ -120,6 +120,10 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
     {
         private readonly List<string> conditions = [];
 
+        public BlobTagFilterBuilder And() => Append("AND");
+
+        public string Build() => String.Join(" ", conditions);
+
         public BlobTagFilterBuilder Equal(string tag, string value) => Append($"\"{EscapeIdentifier(tag)}\" = '{EscapeValue(value)}'");
 
         public BlobTagFilterBuilder GreaterThan(string tag, string value) => Append($"\"{EscapeIdentifier(tag)}\" > '{EscapeValue(value)}'");
@@ -130,16 +134,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
 
         public BlobTagFilterBuilder LessThanOrEqual(string tag, string value) => Append($"\"{EscapeIdentifier(tag)}\" <= '{EscapeValue(value)}'");
 
-        public BlobTagFilterBuilder And() => Append("AND");
-
-        public string Build() => String.Join(" ", conditions);
-
-        private BlobTagFilterBuilder Append(string condition)
-        {
-            conditions.Add(condition);
-            return this;
-        }
-
         private static string EscapeIdentifier(string identifier)
         {
             return identifier.Replace("'", "''");
@@ -149,6 +143,11 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib
         {
             return value.Replace("'", "''");
         }
-    }
 
+        private BlobTagFilterBuilder Append(string condition)
+        {
+            conditions.Add(condition);
+            return this;
+        }
+    }
 }

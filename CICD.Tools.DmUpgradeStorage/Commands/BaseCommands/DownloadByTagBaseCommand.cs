@@ -45,19 +45,19 @@
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal abstract class DownloadByTagBaseCommandHandler : BaseCommandHandler
     {
-        public string? Version { get; set; }
-
         public uint? BuildNumber { get; set; }
 
         public uint? Cu { get; set; }
 
         public uint? GerritId { get; set; }
 
-        public uint? PatchSet { get; set; }
-
         public PackageType? PackageType { get; set; }
 
+        public uint? PatchSet { get; set; }
+
         public UpgradeType? UpgradeType { get; set; }
+
+        public string? Version { get; set; }
 
         public abstract override int Invoke(InvocationContext context);
 

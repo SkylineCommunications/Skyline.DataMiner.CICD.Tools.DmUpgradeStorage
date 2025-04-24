@@ -11,23 +11,10 @@
     /// </summary>
     public partial class PackageToUpload
     {
-        [GeneratedRegex(@"DataMiner\s(?<Version>\d+\.\d+\.\d+\.\d+)(?:\(CU(?<CU>\d+)\))?-(?<BuildNumber>\d+)\s(?<UpgradeType>Full|Web)\sUpgrade(?:\s\((?<Type>rc|internal)\))?(?:\sGER-(?<GER>\d+))?(?:\sPS-(?<PS>\d+))?")]
-        private static partial Regex DmUpgradeFileNameRegex();
-
-        /// <summary>
-        /// Represents the file to upload.
-        /// </summary>
-        public required IFileInfoIO PackageFile { get; init; }
-
-        /// <summary>
-        /// Represents the DataMiner version. Expected format: X.X.X.X
-        /// </summary>
-        public required string Version { get; set; }
-
         /// <summary>
         /// Represents the build number of the upgrade package.
         /// </summary>
-        public required uint BuildNumber { get; set; }
+        public uint BuildNumber { get; set; }
 
         /// <summary>
         /// Represents the CU number.
@@ -38,6 +25,11 @@
         /// Represents the gerrit ID.
         /// </summary>
         public uint? GerritId { get; set; }
+
+        /// <summary>
+        /// Represents the file to upload.
+        /// </summary>
+        public IFileInfoIO PackageFile { get; init; }
 
         /// <summary>
         /// Represents the patch set number of the gerrit item.
@@ -53,6 +45,11 @@
         /// Represent the type of upgrade.
         /// </summary>
         public UpgradeType? UpgradeType { get; set; }
+
+        /// <summary>
+        /// Represents the DataMiner version. Expected format: X.X.X.X
+        /// </summary>
+        public string Version { get; set; }
 
         /// <summary>
         /// Create a <see cref="PackageToUpload"/> object from a dmupgrade file based on the file name.
@@ -88,5 +85,8 @@
 
             return null;
         }
+
+        [GeneratedRegex(@"DataMiner\s(?<Version>\d+\.\d+\.\d+\.\d+)(?:\(CU(?<CU>\d+)\))?-(?<BuildNumber>\d+)\s(?<UpgradeType>Full|Web)\sUpgrade(?:\s\((?<Type>rc|internal)\))?(?:\sGER-(?<GER>\d+))?(?:\sPS-(?<PS>\d+))?")]
+        private static partial Regex DmUpgradeFileNameRegex();
     }
 }

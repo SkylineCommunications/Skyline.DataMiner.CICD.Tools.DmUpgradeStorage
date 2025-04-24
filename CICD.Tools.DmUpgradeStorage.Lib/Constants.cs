@@ -3,11 +3,6 @@
     internal static class Constants
     {
         /// <summary>
-        /// The name of the tag used to store the version of the package.
-        /// </summary>
-        public const string VersionTagName = "Version";
-
-        /// <summary>
         /// The name of the tag used to store the build number of the package.
         /// </summary>
         public const string BuildNumberTagName = "BuildNumber";
@@ -36,5 +31,10 @@
         /// The name of the tag used to store the upgrade type of the package.
         /// </summary>
         public const string UpgradeTypeTagName = "UpgradeType";
+
+        /// <summary>
+        /// The name of the tag used to store the version of the package.
+        /// </summary>
+        public const string VersionTagName = "Version";
     }
 }

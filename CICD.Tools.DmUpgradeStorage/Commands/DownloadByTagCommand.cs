@@ -14,7 +14,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Models;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine;
 
@@ -36,7 +35,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class DownloadByTagCommandHandler(ILogger<DownloadByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
     {
-        public required IDirectoryInfoIO OutputDirectory { get; set; }
+        public IDirectoryInfoIO OutputDirectory { get; set; }
 
         public override int Invoke(InvocationContext context)
         {
