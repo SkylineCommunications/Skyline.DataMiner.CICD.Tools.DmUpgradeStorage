@@ -25,6 +25,12 @@
     <RepositoryUrl>https://github.com/SkylineCommunications/Skyline.DataMiner.CICD.Tools.DmUpgradeStorage</RepositoryUrl>
     <UserSecretsId>975ebba6-7877-4399-8e13-faa613ac283f</UserSecretsId>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+  </PropertyGroup>
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />

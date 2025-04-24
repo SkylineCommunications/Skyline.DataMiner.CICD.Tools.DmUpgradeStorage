@@ -31,7 +31,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class DeleteCommandHandler(ILogger<DeleteCommandHandler> logger, IDmUpgradeStorageService storageService) : BaseCommandHandler
     {
-        public string PackageName { get; set; }
+        public required string PackageName { get; set; }
 
         public override int Invoke(InvocationContext context)
         {

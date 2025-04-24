@@ -14,7 +14,7 @@
         /// <summary>
         /// Represents the build number of the upgrade package.
         /// </summary>
-        public uint BuildNumber { get; set; }
+        public required uint BuildNumber { get; set; }
 
         /// <summary>
         /// Represents the CU number.
@@ -29,7 +29,7 @@
         /// <summary>
         /// Represents the file to upload.
         /// </summary>
-        public IFileInfoIO PackageFile { get; init; }
+        public required IFileInfoIO PackageFile { get; init; }
 
         /// <summary>
         /// Represents the patch set number of the gerrit item.
@@ -49,7 +49,7 @@
         /// <summary>
         /// Represents the DataMiner version. Expected format: X.X.X.X
         /// </summary>
-        public string Version { get; set; }
+        public required string Version { get; set; }
 
         /// <summary>
         /// Create a <see cref="PackageToUpload"/> object from a dmupgrade file based on the file name.

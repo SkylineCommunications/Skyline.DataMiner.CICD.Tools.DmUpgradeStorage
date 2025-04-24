@@ -67,7 +67,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
 
         public uint? Cu { get; set; }
 
-        public IFileInfoIO DmUpgradeFile { get; set; }
+        public required IFileInfoIO DmUpgradeFile { get; set; }
 
         public uint? GerritId { get; set; }
 
