@@ -5,6 +5,7 @@
     using System.Diagnostics;
     using System.IO;
     using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
     using System.Security.Authentication;
     using System.Threading;
     using System.Threading.Tasks;
@@ -56,7 +57,14 @@
 
             try
             {
-                connectionString ??= configuration?[UserSecrets.BlobStorageConnectionString];
+                connectionString ??= configuration?[UserSecrets.BlobStorageConnectionString] ??
+                                     Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString);
+                if (connectionString == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    connectionString = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString, EnvironmentVariableTarget.User) ?? 
+                                       Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString, EnvironmentVariableTarget.Machine);
+                }
+
                 if (!String.IsNullOrWhiteSpace(connectionString))
                 {
                     logger.LogDebug("Creating the BlobServiceClient with the connection string.");
@@ -65,8 +73,21 @@
                     return;
                 }
 
-                accountName ??= configuration?[UserSecrets.BlobStorageAccountName];
-                accountKey ??= configuration?[UserSecrets.BlobStorageAccountKey];
+                accountName ??= configuration?[UserSecrets.BlobStorageAccountName] ??
+                                Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountName);
+                if (accountName == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    accountName = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountName, EnvironmentVariableTarget.User) ??
+                                  Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountName, EnvironmentVariableTarget.Machine);
+                }
+
+                accountKey ??= configuration?[UserSecrets.BlobStorageAccountKey] ??
+                               Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountKey);
+                if (accountKey == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    accountKey = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountKey, EnvironmentVariableTarget.User) ??
+                                 Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageAccountKey, EnvironmentVariableTarget.Machine);
+                }
 
                 if (!String.IsNullOrWhiteSpace(accountName) && !String.IsNullOrWhiteSpace(accountKey))
                 {
@@ -211,7 +232,14 @@
 
             try
             {
-                containerName = name ?? configuration?[UserSecrets.BlobStorageContainerName];
+                containerName = name ?? configuration?[UserSecrets.BlobStorageContainerName] ??
+                    Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageContainerName);
+                if (containerName == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    containerName = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageContainerName, EnvironmentVariableTarget.User) ??
+                                    Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageContainerName, EnvironmentVariableTarget.Machine);
+                }
+
                 if (String.IsNullOrWhiteSpace(containerName))
                 {
                     throw new ArgumentException("Missing container name for the blob storage.");

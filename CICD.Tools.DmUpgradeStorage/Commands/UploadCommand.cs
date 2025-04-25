@@ -20,7 +20,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     internal class UploadCommand : BaseCommand
     {
         public UploadCommand() :
-            base(name: "upload", description: "TBD.")
+            base(name: "upload", description: "Upload a dmupgrade package to the storage.")
         {
             AddOption(new Option<IFileInfoIO>(
                 aliases: ["--dmupgrade-file", "-df"],
