@@ -60,6 +60,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
 
                 var packages = storageService.DownloadPackagesByTagsAsync(builder, context.GetCancellationToken());
 
+                int nbrOfPackages = 0;
                 await foreach (var package in packages)
                 {
                     (string? name, Stream? content) = await package;
@@ -70,6 +71,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                     await stream.CopyToAsync(fileStream, context.GetCancellationToken());
 
                     logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", name, OutputDirectory.FullName);
+                    nbrOfPackages++;
+                }
+
+                if (nbrOfPackages == 0)
+                {
+                    logger.LogError("No packages found for the provided tags.");
+                    return (int)ExitCodes.Fail;
                 }
 
                 return (int)ExitCodes.Ok;
