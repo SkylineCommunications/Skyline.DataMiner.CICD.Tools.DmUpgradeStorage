@@ -122,10 +122,12 @@
                 if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
                 {
                     // Blob does not exist, so we can return true.
+                    logger.LogInformation("Package '{name}' was already removed.", packageName);
                     return true;
                 }
 
-                Response response = await container.DeleteBlobAsync(packageName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                Response response = await container.DeleteBlobAsync(packageName, DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken)
+                                                   .ConfigureAwait(false);
                 if (response.IsError)
                 {
                     logger.LogError("Delete Error: {reason}", response.ReasonPhrase);
