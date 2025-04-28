@@ -25,8 +25,8 @@
         /// </summary>
         /// <param name="packageName">The package name.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>True if the blob was successfully deleted; false otherwise.</returns>
-        Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default);
+        /// <returns>True if the blob was successfully deleted; false otherwise. Null if the package did not exist.</returns>
+        Task<bool?> DeleteAsync(string packageName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Downloads a package by its name.

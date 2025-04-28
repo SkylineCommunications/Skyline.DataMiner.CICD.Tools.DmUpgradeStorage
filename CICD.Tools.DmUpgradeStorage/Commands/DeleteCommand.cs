@@ -48,11 +48,19 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                 storageService.Authenticate(ConnectionString, AccountName, AccountKey);
                 storageService.SetContainer(ContainerName);
 
-                bool result = await storageService.DeleteAsync(PackageName, context.GetCancellationToken());
-                if (!result)
+                bool? result = await storageService.DeleteAsync(PackageName, context.GetCancellationToken());
+
+                switch (result)
                 {
-                    logger.LogError("Failed to delete the package.");
-                    return (int)ExitCodes.Fail;
+                    case null:
+                        logger.LogWarning("Package ({name}) does not exist.", PackageName);
+                        break;
+                    case false:
+                        logger.LogError("Package ({name}) could not be deleted.", PackageName);
+                        return (int)ExitCodes.Fail;
+                    default:
+                        logger.LogInformation("Package ({name}) was deleted.", PackageName);
+                        break;
                 }
 
                 return (int)ExitCodes.Ok;

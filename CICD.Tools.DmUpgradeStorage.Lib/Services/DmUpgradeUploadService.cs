@@ -107,7 +107,7 @@
         }
 
         /// <inheritdoc />
-        public async Task<bool> DeleteAsync(string packageName, CancellationToken cancellationToken = default)
+        public async Task<bool?> DeleteAsync(string packageName, CancellationToken cancellationToken = default)
         {
             DebugLog.Start(logger);
 
@@ -122,8 +122,7 @@
                 if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
                 {
                     // Blob does not exist, so we can return true.
-                    logger.LogInformation("Package '{name}' was already removed.", packageName);
-                    return true;
+                    return null;
                 }
 
                 Response response = await container.DeleteBlobAsync(packageName, DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken)
