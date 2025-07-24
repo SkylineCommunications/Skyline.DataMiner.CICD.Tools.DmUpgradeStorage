@@ -36,5 +36,10 @@
         /// The name of the tag used to store the version of the package.
         /// </summary>
         public const string VersionTagName = "Version";
+
+        /// <summary>
+        /// The name of the tag used to store the file name of the package.
+        /// </summary>
+        public const string FileNameTagName = "FileName";
     }
 }

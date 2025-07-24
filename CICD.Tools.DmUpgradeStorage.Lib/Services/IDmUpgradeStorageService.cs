@@ -1,5 +1,6 @@
 ﻿namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services
 {
+    using System;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using System.Threading;
@@ -63,7 +64,7 @@
         /// </summary>
         /// <param name="package">The package to upload.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
-        /// <returns>True if upload succeeded, false otherwise.</returns>
-        Task<bool> UploadAsync(PackageToUpload package, CancellationToken cancellationToken = default);
+        /// <returns>A <see cref="UploadResult"/> with the info about the upload.</returns>
+        Task<UploadResult> UploadAsync(PackageToUpload package, CancellationToken cancellationToken = default);
     }
 }

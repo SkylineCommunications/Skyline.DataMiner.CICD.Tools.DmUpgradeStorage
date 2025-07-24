@@ -4,9 +4,11 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
+    using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Security.Authentication;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -253,7 +255,7 @@
         }
 
         /// <inheritdoc />
-        public async Task<bool> UploadAsync(PackageToUpload package, CancellationToken cancellationToken = default)
+        public async Task<UploadResult> UploadAsync(PackageToUpload package, CancellationToken cancellationToken = default)
         {
             DebugLog.Start(logger);
 
@@ -266,23 +268,25 @@
                 if (!packageFile.Exists)
                 {
                     logger.LogError("File '{fileName}' could not be found.", packageFile.FullName);
-                    return false;
+                    return new UploadResult(false, Guid.Empty);
                 }
 
                 if (packageFile.Extension != ".dmupgrade")
                 {
                     logger.LogError("Invalid file type. The file must be a .dmupgrade file.");
-                    return false;
+                    return new UploadResult(false, Guid.Empty);
                 }
 
                 BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-
+                
+                Guid uniqueIdentifier = Guid.NewGuid();
+                string identifier = uniqueIdentifier.ToString();
                 string packageName = packageFile.Name;
-                BlobClient blob = container.GetBlobClient(packageName);
+                BlobClient blob = container.GetBlobClient(identifier);
 
                 await using FileStream fileStream = packageFile.OpenRead();
 
-                logger.LogInformation("Starting upload of package '{name}'.", packageName);
+                logger.LogInformation("Starting upload of package '{name}' with identifier {identifier}.", packageName, identifier);
 
                 Stopwatch sw = Stopwatch.StartNew();
                 DateTime lastLogged = DateTime.MinValue;
@@ -299,6 +303,8 @@
                         [Constants.PatchSetTagName] = package.PatchSet?.ToString() ?? String.Empty,
                         [Constants.TypeTagName] = package.Type.ToString(),
                         [Constants.UpgradeTypeTagName] = package.UpgradeType?.ToString() ?? String.Empty,
+                        // The file name tag is used to store the original file name in Base64 format due to potential special characters.
+                        [Constants.FileNameTagName] = Convert.ToBase64String(Encoding.UTF8.GetBytes(packageFile.Name))
                     },
                     ProgressHandler = new Progress<long>(l =>
                     {
@@ -313,10 +319,10 @@
                 }, cancellationToken).ConfigureAwait(false);
 
                 sw.Stop();
-                logger.LogInformation("Finished uploading package '{name}'.", packageName);
+                logger.LogInformation("Finished uploading package '{name}' with identifier {identifier}.", packageName, identifier);
                 logger.LogDebug("Upload took {time}", sw.Elapsed);
 
-                return response?.Value != null;
+                return new UploadResult(Success: response?.Value != null, uniqueIdentifier);
             }
             finally
             {
@@ -351,11 +357,23 @@
                     })
                 }, cancellationToken).ConfigureAwait(false);
 
+                Response<GetBlobTagResult> tags = await blob.GetTagsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (tags.Value.Tags.ToDictionary().TryGetValue(Constants.FileNameTagName, out string? fileName))
+                {
+                    // Decode the file name from Base64 if it exists in the tags.
+                    fileName = Encoding.UTF8.GetString(Convert.FromBase64String(fileName));
+                }
+                else
+                {
+                    // Default back to the blob name if the file name tag is not present.
+                    fileName = blob.Name;
+                }
+
                 sw.Stop();
                 logger.LogInformation("Finished download of {blobName}.", blob.Name);
                 logger.LogDebug("Download took {time}", sw.Elapsed);
 
-                return new DownloadedPackage(blob.Name, content.Value.Content);
+                return new DownloadedPackage(fileName, content.Value.Content);
             }
             finally
             {
