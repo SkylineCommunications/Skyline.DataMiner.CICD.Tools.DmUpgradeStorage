@@ -6,6 +6,8 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     using System.CommandLine.Invocation;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
+    using System.IO;
+    using System.Text.Json;
     using System.Threading.Tasks;
 
     using Microsoft.Extensions.Logging;
@@ -57,6 +59,14 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
             AddOption(new Option<UpgradeType?>(
                 aliases: ["--upgrade-type", "-ut"],
                 description: "What type of upgrade is this?"));
+
+            AddOption(new Option<IFileInfoIO>(
+                aliases: ["--output-file", "-of"],
+                description: "Contains the unique identifier of the uploaded package. Will be created or overwritten.",
+                parseArgument: OptionHelper.ParseFileInfo!)
+            {
+                IsRequired = true
+            }.LegalFilePathsOnly());
         }
     }
 
@@ -78,6 +88,8 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
         public UpgradeType? UpgradeType { get; set; }
 
         public string? Version { get; set; }
+
+        public required IFileInfoIO OutputFile { get; set; }
 
         public override int Invoke(InvocationContext context)
         {
@@ -102,7 +114,23 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
 
                 PackageToUpload packageToUpload = CreateUploadPackage();
 
-                await storageService.UploadAsync(packageToUpload, context.GetCancellationToken());
+                UploadResult result = await storageService.UploadAsync(packageToUpload, context.GetCancellationToken());
+
+                if (!result.Success)
+                {
+                    logger.LogError("Failed to upload the upgrade package.");
+                    return (int)ExitCodes.Fail;
+                }
+
+                var outputFile = new UploadOutputFile
+                {
+                    UniqueIdentifier = result.Identifier
+                };
+
+                // Make sure the directory is created
+                OutputFile.Directory.Create();
+                await using StreamWriter streamWriter = OutputFile.CreateText();
+                await streamWriter.WriteAsync(JsonSerializer.Serialize(outputFile));
 
                 return (int)ExitCodes.Ok;
             }
@@ -189,5 +217,10 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
 
             return package;
         }
+    }
+
+    internal class UploadOutputFile
+    {
+        public required Guid UniqueIdentifier { get; set; }
     }
 }
