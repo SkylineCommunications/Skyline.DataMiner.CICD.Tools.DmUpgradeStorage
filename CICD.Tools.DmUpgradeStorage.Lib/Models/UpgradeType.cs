@@ -11,6 +11,11 @@
         Full,
 
         /// <summary>
+        /// Partial DataMiner upgrade which contains a subset of features or fixes.
+        /// </summary>
+        Partial,
+
+        /// <summary>
         /// Web-only DataMiner upgrade.
         /// </summary>
         Web
