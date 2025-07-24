@@ -8,6 +8,7 @@
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Security.Authentication;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -302,7 +303,8 @@
                         [Constants.PatchSetTagName] = package.PatchSet?.ToString() ?? String.Empty,
                         [Constants.TypeTagName] = package.Type.ToString(),
                         [Constants.UpgradeTypeTagName] = package.UpgradeType?.ToString() ?? String.Empty,
-                        [Constants.FileNameTagName] = packageFile.Name
+                        // The file name tag is used to store the original file name in Base64 format due to potential special characters.
+                        [Constants.FileNameTagName] = Convert.ToBase64String(Encoding.UTF8.GetBytes(packageFile.Name))
                     },
                     ProgressHandler = new Progress<long>(l =>
                     {
@@ -356,8 +358,14 @@
                 }, cancellationToken).ConfigureAwait(false);
 
                 Response<GetBlobTagResult> tags = await blob.GetTagsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                if (!tags.Value.Tags.ToDictionary().TryGetValue(Constants.FileNameTagName, out string? fileName))
+                if (tags.Value.Tags.ToDictionary().TryGetValue(Constants.FileNameTagName, out string? fileName))
                 {
+                    // Decode the file name from Base64 if it exists in the tags.
+                    fileName = Encoding.UTF8.GetString(Convert.FromBase64String(fileName));
+                }
+                else
+                {
+                    // Default back to the blob name if the file name tag is not present.
                     fileName = blob.Name;
                 }
 
