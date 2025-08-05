@@ -1,4 +1,4 @@
-﻿namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
+﻿namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 {
     using System.CommandLine;
 

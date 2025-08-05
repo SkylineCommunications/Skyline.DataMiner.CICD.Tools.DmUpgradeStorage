@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 {
     using System;
     using System.CommandLine;
@@ -12,15 +12,16 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     using Microsoft.Extensions.Logging;
 
     using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine;
 
-    internal class DownloadLatestByTagCommand : DownloadByTagBaseCommand
+    internal class DownloadByNameCommand : BaseCommand
     {
-        public DownloadLatestByTagCommand() :
-            base(name: "latest-by-tag", description: "Download the latest dmupgrade package filtered on tags.")
+        public DownloadByNameCommand() :
+            base(name: "by-name", description: "Download a dmupgrade package by name.")
         {
             AddOption(new Option<IDirectoryInfoIO>(
                 aliases: ["--output-directory", "-od"],
@@ -29,18 +30,22 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
             {
                 IsRequired = true
             }.LegalFilePathsOnly());
+
+            AddOption(new Option<string>(
+                aliases: ["--name", "-n"],
+                description: "Retrieve package via name.")
+            {
+                IsRequired = true
+            });
         }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
-    internal class DownloadLatestByTagCommandHandler(ILogger<DownloadLatestByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
+    internal class DownloadByNameCommandHandler(ILogger<DownloadByNameCommandHandler> logger, IDmUpgradeStorageService storageService) : BaseCommandHandler
     {
-        public required IDirectoryInfoIO OutputDirectory { get; set; }
+        public required string Name { get; set; }
 
-        public override int Invoke(InvocationContext context)
-        {
-            return (int)ExitCodes.NotImplemented;
-        }
+        public required IDirectoryInfoIO OutputDirectory { get; set; }
 
         public override async Task<int> InvokeAsync(InvocationContext context)
         {
@@ -55,20 +60,15 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                 // Create directory first to make sure that it can be created
                 OutputDirectory.Create();
 
-                // Create a filter to get the latest package
-                PackageTagFilter builder = GetFilter();
-
-                var package = await storageService.DownloadLatestByTagsAsync(builder, context.GetCancellationToken());
-
+                var package = await storageService.DownloadByNameAsync(Name, context.GetCancellationToken());
                 if (package == null)
                 {
-                    logger.LogError("No package found for the provided filters");
+                    logger.LogError("No package found with the provided name: {name}", Name);
                     return (int)ExitCodes.Fail;
                 }
 
                 await using Stream stream = package.Content;
-                string outputFilePath = Path.Combine(OutputDirectory.FullName, package.Name);
-                await using FileStream fileStream = new FileStream(outputFilePath, FileMode.Create);
+                await using FileStream fileStream = new FileStream(Path.Combine(OutputDirectory.FullName, package.Name), FileMode.Create);
                 await stream.CopyToAsync(fileStream, context.GetCancellationToken());
 
                 logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", package.Name, OutputDirectory.FullName);
@@ -77,7 +77,7 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Failed to download the packages.");
+                logger.LogError(e, "Failed to download the package.");
                 return (int)ExitCodes.UnexpectedException;
             }
             finally

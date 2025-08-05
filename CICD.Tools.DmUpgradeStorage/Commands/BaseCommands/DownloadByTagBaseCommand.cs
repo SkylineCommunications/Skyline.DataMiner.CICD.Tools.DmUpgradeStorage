@@ -58,9 +58,7 @@
         public UpgradeType? UpgradeType { get; set; }
 
         public string? Version { get; set; }
-
-        public abstract override int Invoke(InvocationContext context);
-
+        
         public abstract override Task<int> InvokeAsync(InvocationContext context);
 
         protected PackageTagFilter GetFilter()

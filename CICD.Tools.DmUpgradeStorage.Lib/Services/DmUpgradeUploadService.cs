@@ -16,7 +16,9 @@
     using Azure.Storage;
     using Azure.Storage.Blobs;
     using Azure.Storage.Blobs.Models;
+    using Azure.Storage.Sas;
 
+    using Microsoft.Extensions.Azure;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
 
@@ -52,6 +54,13 @@
             this.configuration = configuration;
         }
 
+        /// <summary>
+        /// Represents the default duration for a SAS (Shared Access Signature) URI.
+        /// </summary>
+        /// <remarks>The default duration is set to 1 hour. This value is used as the expiration time for
+        /// SAS URIs unless explicitly overridden.</remarks>
+        public static readonly TimeSpan SasUriDefaultDuration = TimeSpan.FromMinutes(60);
+
         /// <inheritdoc />
         public void Authenticate(string? connectionString = null, string? accountName = null, string? accountKey = null)
         {
@@ -63,7 +72,7 @@
                                      Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString);
                 if (connectionString == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    connectionString = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString, EnvironmentVariableTarget.User) ?? 
+                    connectionString = Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString, EnvironmentVariableTarget.User) ??
                                        Environment.GetEnvironmentVariable(EnvironmentVariables.BlobStorageConnectionString, EnvironmentVariableTarget.Machine);
                 }
 
@@ -229,6 +238,96 @@
         }
 
         /// <inheritdoc />
+        public async Task<GenerateSasUriResult?> GenerateSasUriByNameAsync(string packageName, TimeSpan? duration, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(packageName);
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                BlobClient blob = container.GetBlobClient(packageName);
+                if (!await blob.ExistsAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    logger.LogError("Package with name {name} does not exist.", packageName);
+                    return null;
+                }
+
+                var uri = GenerateSasUriBlob(blob, duration);
+                return new GenerateSasUriResult(uri);
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<GenerateSasUriResult?> GenerateSasUriLatestByTagsAsync(PackageTagFilter builder, TimeSpan? duration, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                if (builder.IsEmpty())
+                {
+                    logger.LogError("No filter was specified. Please specify at least one filter.");
+                    return null;
+                }
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                var foundBlobs = container.FindBlobsByTagsAsync(builder.Build(), cancellationToken).ConfigureAwait(false);
+
+                var uri = await GenerateSasUriLatestBlobAsync(container, foundBlobs, duration, cancellationToken).ConfigureAwait(false);
+                return uri == null ? null : new GenerateSasUriResult(uri);
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<GenerateSasUriResult?> GenerateSasUriByTagsAsync(PackageTagFilter filter, TimeSpan? duration, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                if (filter.IsEmpty())
+                {
+                    logger.LogError("No filter was specified. Please specify at least one filter.");
+                    return null;
+                }
+
+                EnsureSetup();
+
+                BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
+
+                var foundBlobs = container.FindBlobsByTagsAsync(filter.Build(), cancellationToken).ConfigureAwait(false);
+                GenerateSasUriResult result = new GenerateSasUriResult();
+                await foreach (TaggedBlobItem blobItem in foundBlobs)
+                {
+                    BlobClient blobClient = container.GetBlobClient(blobItem.BlobName);
+                    result.SasUris.Add(GenerateSasUriBlob(blobClient, duration));
+                }
+
+                return result;
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetContainer(string? name = null)
         {
             DebugLog.Start(logger);
@@ -278,7 +377,7 @@
                 }
 
                 BlobContainerClient container = await GetContainerAsync(cancellationToken).ConfigureAwait(false);
-                
+
                 Guid uniqueIdentifier = Guid.NewGuid();
                 string identifier = uniqueIdentifier.ToString();
                 string packageName = packageFile.Name;
@@ -381,6 +480,20 @@
             }
         }
 
+        private Uri GenerateSasUriBlob(BlobClient blob, TimeSpan? duration)
+        {
+            DebugLog.Start(logger);
+
+            try
+            {
+                return blob.GenerateSasUri(BlobSasPermissions.Read, DateTime.Now.Add(duration ?? SasUriDefaultDuration));
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
         private async Task<DownloadedPackage?> DownloadLatestBlobAsync(BlobContainerClient container, ConfiguredCancelableAsyncEnumerable<TaggedBlobItem> blobItems, CancellationToken cancellationToken = default)
         {
             DebugLog.Start(logger);
@@ -408,6 +521,40 @@
 
                 BlobClient blobClient = container.GetBlobClient(latestItem);
                 return await DownloadBlobAsync(blobClient, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                DebugLog.End(logger);
+            }
+        }
+
+        private async Task<Uri?> GenerateSasUriLatestBlobAsync(BlobContainerClient container, ConfiguredCancelableAsyncEnumerable<TaggedBlobItem> blobItems, TimeSpan? duration, CancellationToken cancellationToken = default)
+        {
+            DebugLog.Start(logger);
+            try
+            {
+                string? latestItem = null;
+                DateTimeOffset offset = DateTimeOffset.MinValue;
+                await foreach (TaggedBlobItem taggedBlobItem in blobItems)
+                {
+                    BlobClient blob = container.GetBlobClient(taggedBlobItem.BlobName);
+
+                    Response<BlobProperties> properties = await blob.GetPropertiesAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    if (offset < properties.Value.CreatedOn)
+                    {
+                        latestItem = taggedBlobItem.BlobName;
+                    }
+                }
+
+                if (latestItem == null)
+                {
+                    logger.LogDebug("No latest item found from the provided list of items.");
+                    return null;
+                }
+
+                BlobClient blobClient = container.GetBlobClient(latestItem);
+                return GenerateSasUriBlob(blobClient, duration);
             }
             finally
             {

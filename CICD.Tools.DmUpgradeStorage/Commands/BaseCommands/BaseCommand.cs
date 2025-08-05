@@ -37,7 +37,10 @@
 
         public string? ContainerName { get; set; }
 
-        public abstract int Invoke(InvocationContext context);
+        public int Invoke(InvocationContext context)
+        {
+            return (int)ExitCodes.NotImplemented;
+        }
 
         public abstract Task<int> InvokeAsync(InvocationContext context);
     }
