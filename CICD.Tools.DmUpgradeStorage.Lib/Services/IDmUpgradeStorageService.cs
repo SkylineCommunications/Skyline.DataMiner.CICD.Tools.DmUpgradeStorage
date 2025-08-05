@@ -54,6 +54,33 @@
         IAsyncEnumerable<ConfiguredTaskAwaitable<DownloadedPackage>> DownloadPackagesByTagsAsync(PackageTagFilter filter, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Generates a SAS URI for a package by its name.
+        /// </summary>
+        /// <param name="packageName">The package name.</param>
+        /// <param name="duration">The duration the SAS URI is valid. Default is 60 minutes.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>The SAS URI for the package, or null if not possible.</returns>
+        Task<Uri?> GenerateSasUriByNameAsync(string packageName, TimeSpan? duration, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Generates a SAS URI for the latest package matching the specified tag filter.
+        /// </summary>
+        /// <param name="builder">The tag filter builder.</param>
+        /// <param name="duration">The duration the SAS URI is valid. Default is 60 minutes.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>The SAS URI for the package, or null if not possible.</returns>
+        Task<Uri?> GenerateSasUriLatestByTagsAsync(PackageTagFilter builder, TimeSpan? duration, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Downloads all packages matching the specified tag filter.
+        /// </summary>
+        /// <param name="filter">The tag filter to apply.</param>
+        /// <param name="duration">The duration the SAS URI is valid. Default is 60 minutes.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>An asynchronous stream of downloaded packages.</returns>
+        IAsyncEnumerable<Uri> GenerateSasUriByTagsAsync(PackageTagFilter filter, TimeSpan? duration, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Sets the container name for subsequent operations.
         /// </summary>
         /// <param name="name">The container name.</param>

@@ -15,6 +15,8 @@
 
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.GenerateSasUri;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
 
     /// <summary>
@@ -38,6 +40,7 @@
                 new UploadCommand(),
                 new DeleteCommand(),
                 new DownloadCommand(), // Contains sub commands
+                new GenerateSasUriCommand(), // Contains sub commands
             };
 
             var isDebug = new Option<bool>(
@@ -82,7 +85,10 @@
                     .UseCommandHandler<DeleteCommand, DeleteCommandHandler>()
                     .UseCommandHandler<DownloadByNameCommand, DownloadByNameCommandHandler>()
                     .UseCommandHandler<DownloadByTagCommand, DownloadByTagCommandHandler>()
-                    .UseCommandHandler<DownloadLatestByTagCommand, DownloadLatestByTagCommandHandler>();
+                    .UseCommandHandler<DownloadLatestByTagCommand, DownloadLatestByTagCommandHandler>()
+                    .UseCommandHandler<GenerateSasUriByNameCommand, GenerateSasUriByNameCommandHandler>()
+                    .UseCommandHandler<GenerateSasUriByTagCommand, GenerateSasUriByTagCommandHandler>()
+                    .UseCommandHandler<GenerateSasUriLatestByTagCommand, GenerateSasUriLatestByTagCommandHandler>();
             });
 
             return await builder.Build().InvokeAsync(args);

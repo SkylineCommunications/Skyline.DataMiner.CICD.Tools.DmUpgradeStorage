@@ -1,47 +1,34 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 {
     using System;
-    using System.CommandLine;
     using System.CommandLine.Invocation;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using System.IO;
+    using System.Text.Json;
     using System.Threading.Tasks;
 
     using Microsoft.Extensions.Logging;
 
     using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Models;
 
-    internal class DownloadByTagCommand : DownloadByTagBaseCommand
+    internal class GenerateSasUriByTagCommand : GenerateSasUriByTagBaseCommand
     {
-        public DownloadByTagCommand() :
+        public GenerateSasUriByTagCommand() :
             base(name: "by-tag", description: "Download dmupgrade packages filtered on tags.")
         {
-            AddOption(new Option<IDirectoryInfoIO>(
-                aliases: ["--output-directory", "-od"],
-                description: "The directory where the package(s) will be stored.",
-                parseArgument: OptionHelper.ParseDirectoryInfo!)
-            {
-                IsRequired = true
-            }.LegalFilePathsOnly());
         }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
-    internal class DownloadByTagCommandHandler(ILogger<DownloadByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
+    internal class GenerateSasUriByTagCommandHandler(ILogger<GenerateSasUriByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : GenerateSasUriByTagBaseCommandHandler
     {
-        public required IDirectoryInfoIO OutputDirectory { get; set; }
-
-        public override int Invoke(InvocationContext context)
-        {
-            return (int)ExitCodes.NotImplemented;
-        }
-
         public override async Task<int> InvokeAsync(InvocationContext context)
         {
             DebugLog.Start(logger);
@@ -53,24 +40,18 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                 storageService.SetContainer(ContainerName);
 
                 // Create directory first to make sure that it can be created
-                OutputDirectory.Create();
+                OutputFile.Directory.Create();
 
                 // Create a filter to get the latest package
                 PackageTagFilter builder = GetFilter();
 
-                var packages = storageService.DownloadPackagesByTagsAsync(builder, context.GetCancellationToken());
+                var uris = storageService.GenerateSasUriByTagsAsync(builder, GetExpirationTime(), context.GetCancellationToken());
 
                 int nbrOfPackages = 0;
-                await foreach (var package in packages)
+                GenerateSasUriResult result = new GenerateSasUriResult();
+                await foreach (var uri in uris)
                 {
-                    (string? name, Stream? content) = await package;
-
-                    await using Stream stream = content;
-                    string outputFilePath = Path.Combine(OutputDirectory.FullName, name);
-                    await using FileStream fileStream = new FileStream(outputFilePath, FileMode.Create);
-                    await stream.CopyToAsync(fileStream, context.GetCancellationToken());
-
-                    logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", name, OutputDirectory.FullName);
+                    result.SasUris.Add(uri);
                     nbrOfPackages++;
                 }
 
@@ -79,6 +60,11 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                     logger.LogError("No packages found for the provided tags.");
                     return (int)ExitCodes.Fail;
                 }
+
+                await using FileStream fileStream = OutputFile.Create();
+                await JsonSerializer.SerializeAsync(fileStream, result);
+
+                logger.LogInformation("SAS URIs generated in {OutputFile}.", OutputFile.FullName);
 
                 return (int)ExitCodes.Ok;
             }

@@ -33,11 +33,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     {
         public required string PackageName { get; set; }
 
-        public override int Invoke(InvocationContext context)
-        {
-            return (int)ExitCodes.NotImplemented;
-        }
-
         public override async Task<int> InvokeAsync(InvocationContext context)
         {
             DebugLog.Start(logger);
