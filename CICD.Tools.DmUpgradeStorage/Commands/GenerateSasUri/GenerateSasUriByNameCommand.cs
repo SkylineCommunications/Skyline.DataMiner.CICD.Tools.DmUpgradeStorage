@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.GenerateSasUri
 {
     using System;
     using System.CommandLine;
@@ -16,7 +16,6 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Models;
 
     internal class GenerateSasUriByNameCommand : GenerateSasUriBaseCommand
     {
@@ -50,15 +49,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
                 // Create directory first to make sure that it can be created
                 OutputFile.Directory.Create();
 
-                var uri = await storageService.GenerateSasUriByNameAsync(Name, GetExpirationTime() , context.GetCancellationToken());
-                if (uri == null)
+                var result = await storageService.GenerateSasUriByNameAsync(Name, GetExpirationTime() , context.GetCancellationToken());
+                if (result == null)
                 {
                     logger.LogError("No SAS URI could be created for the provided name: {name}", Name);
                     return (int)ExitCodes.Fail;
                 }
 
-                GenerateSasUriResult result = new GenerateSasUriResult();
-                result.SasUris.Add(uri);
                 await using FileStream fileStream = OutputFile.Create();
                 await JsonSerializer.SerializeAsync(fileStream, result);
 

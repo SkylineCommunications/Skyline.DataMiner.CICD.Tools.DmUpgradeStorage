@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.GenerateSasUri
 {
     using System;
     using System.CommandLine.Invocation;
@@ -11,20 +11,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 
     using Microsoft.Extensions.Logging;
 
-    using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Models;
 
-    internal class GenerateSasUriByTagCommand : GenerateSasUriByTagBaseCommand
-    {
-        public GenerateSasUriByTagCommand() :
-            base(name: "by-tag", description: "Download dmupgrade packages filtered on tags.")
-        {
-        }
-    }
+    internal class GenerateSasUriByTagCommand()
+        : GenerateSasUriByTagBaseCommand(name: "by-tag", description: "Generate SAS URI(s) for downloading dmupgrade packages filtered on tags.");
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class GenerateSasUriByTagCommandHandler(ILogger<GenerateSasUriByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : GenerateSasUriByTagBaseCommandHandler
@@ -45,16 +38,9 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
                 // Create a filter to get the latest package
                 PackageTagFilter builder = GetFilter();
 
-                var uris = storageService.GenerateSasUriByTagsAsync(builder, GetExpirationTime(), context.GetCancellationToken());
+                var result = await storageService.GenerateSasUriByTagsAsync(builder, GetExpirationTime(), context.GetCancellationToken());
 
-                int nbrOfPackages = 0;
-                GenerateSasUriResult result = new GenerateSasUriResult();
-                await foreach (var uri in uris)
-                {
-                    result.SasUris.Add(uri);
-                    nbrOfPackages++;
-                }
-
+                int nbrOfPackages = result?.SasUris.Count ?? 0;
                 if (nbrOfPackages == 0)
                 {
                     logger.LogError("No packages found for the provided tags.");
@@ -64,13 +50,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
                 await using FileStream fileStream = OutputFile.Create();
                 await JsonSerializer.SerializeAsync(fileStream, result);
 
-                logger.LogInformation("SAS URIs generated in {OutputFile}.", OutputFile.FullName);
+                logger.LogInformation("SAS URI(s) generated in {OutputFile}.", OutputFile.FullName);
 
                 return (int)ExitCodes.Ok;
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Failed to download the packages.");
+                logger.LogError(e, "Failed to generate SAS URI(s) for the provided tags.");
                 return (int)ExitCodes.UnexpectedException;
             }
             finally

@@ -48,8 +48,4 @@
   <ItemGroup>
     <ProjectReference Include="..\CICD.Tools.DmUpgradeStorage.Lib\CICD.Tools.DmUpgradeStorage.Lib.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Models\" />
-  </ItemGroup>
 </Project>

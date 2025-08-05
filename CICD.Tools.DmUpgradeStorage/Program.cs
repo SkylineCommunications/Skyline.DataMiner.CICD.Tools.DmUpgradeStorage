@@ -81,11 +81,18 @@
                         configurationBuilder.AddUserSecrets<BaseCommand>() // For easy testing
                                             .AddEnvironmentVariables();
                     })
+                    /* Upload */
                     .UseCommandHandler<UploadCommand, UploadCommandHandler>()
+
+                    /* Delete */
                     .UseCommandHandler<DeleteCommand, DeleteCommandHandler>()
+
+                    /* Download */
                     .UseCommandHandler<DownloadByNameCommand, DownloadByNameCommandHandler>()
                     .UseCommandHandler<DownloadByTagCommand, DownloadByTagCommandHandler>()
                     .UseCommandHandler<DownloadLatestByTagCommand, DownloadLatestByTagCommandHandler>()
+
+                    /* Generate SAS URI */
                     .UseCommandHandler<GenerateSasUriByNameCommand, GenerateSasUriByNameCommandHandler>()
                     .UseCommandHandler<GenerateSasUriByTagCommand, GenerateSasUriByTagCommandHandler>()
                     .UseCommandHandler<GenerateSasUriLatestByTagCommand, GenerateSasUriLatestByTagCommandHandler>();

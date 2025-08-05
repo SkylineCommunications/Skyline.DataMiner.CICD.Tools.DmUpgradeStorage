@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.GenerateSasUri
 {
     using System;
     using System.CommandLine.Invocation;
@@ -15,10 +15,9 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Models;
 
     internal class GenerateSasUriLatestByTagCommand()
-        : GenerateSasUriByTagBaseCommand(name: "latest-by-tag", description: "Download the latest dmupgrade package filtered on tags.");
+        : GenerateSasUriByTagBaseCommand(name: "latest-by-tag", description: "Generate a SAS URI for downloading the latest dmupgrade package filtered on tags.");
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
     internal class GenerateSasUriLatestByTagCommandHandler(ILogger<GenerateSasUriLatestByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : GenerateSasUriByTagBaseCommandHandler
@@ -39,16 +38,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
                 // Create a filter to get the latest package
                 PackageTagFilter builder = GetFilter();
 
-                var uri = await storageService.GenerateSasUriLatestByTagsAsync(builder, GetExpirationTime(), context.GetCancellationToken());
-
-                if (uri == null)
+                var result = await storageService.GenerateSasUriLatestByTagsAsync(builder, GetExpirationTime(), context.GetCancellationToken());
+                if (result == null)
                 {
                     logger.LogError("No SAS URI could be created for the provided filters");
                     return (int)ExitCodes.Fail;
                 }
 
-                GenerateSasUriResult result = new GenerateSasUriResult();
-                result.SasUris.Add(uri);
                 await using FileStream fileStream = OutputFile.Create();
                 await JsonSerializer.SerializeAsync(fileStream, result);
 

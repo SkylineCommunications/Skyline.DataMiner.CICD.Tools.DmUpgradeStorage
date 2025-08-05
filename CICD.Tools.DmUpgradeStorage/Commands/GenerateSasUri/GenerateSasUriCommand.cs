@@ -2,8 +2,6 @@
 {
     using System.CommandLine;
 
-    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download;
-
     internal class GenerateSasUriCommand : Command
     {
         public GenerateSasUriCommand() :
