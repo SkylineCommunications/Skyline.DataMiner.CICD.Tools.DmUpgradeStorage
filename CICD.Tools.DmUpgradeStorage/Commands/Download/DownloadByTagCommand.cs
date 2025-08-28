@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 {
     using System;
     using System.CommandLine;
@@ -12,15 +12,16 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     using Microsoft.Extensions.Logging;
 
     using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine;
 
-    internal class DownloadByNameCommand : BaseCommand
+    internal class DownloadByTagCommand : DownloadByTagBaseCommand
     {
-        public DownloadByNameCommand() :
-            base(name: "by-name", description: "Download an dmupgrade package by name.")
+        public DownloadByTagCommand() :
+            base(name: "by-tag", description: "Download dmupgrade packages filtered on tags.")
         {
             AddOption(new Option<IDirectoryInfoIO>(
                 aliases: ["--output-directory", "-od"],
@@ -29,27 +30,13 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
             {
                 IsRequired = true
             }.LegalFilePathsOnly());
-
-            AddOption(new Option<string>(
-                aliases: ["--name", "-n"],
-                description: "Retrieve package via name.")
-            {
-                IsRequired = true
-            });
         }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
-    internal class DownloadByNameCommandHandler(ILogger<DownloadByNameCommandHandler> logger, IDmUpgradeStorageService storageService) : BaseCommandHandler
+    internal class DownloadByTagCommandHandler(ILogger<DownloadByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
     {
-        public required string Name { get; set; }
-
         public required IDirectoryInfoIO OutputDirectory { get; set; }
-
-        public override int Invoke(InvocationContext context)
-        {
-            return (int)ExitCodes.NotImplemented;
-        }
 
         public override async Task<int> InvokeAsync(InvocationContext context)
         {
@@ -64,24 +51,36 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                 // Create directory first to make sure that it can be created
                 OutputDirectory.Create();
 
-                var package = await storageService.DownloadByNameAsync(Name, context.GetCancellationToken());
-                if (package == null)
+                // Create a filter to get the latest package
+                PackageTagFilter builder = GetFilter();
+
+                var packages = storageService.DownloadPackagesByTagsAsync(builder, context.GetCancellationToken());
+
+                int nbrOfPackages = 0;
+                await foreach (var package in packages)
                 {
-                    logger.LogError("No package found with the provided name: {name}", Name);
-                    return (int)ExitCodes.Fail;
+                    (string? name, Stream? content) = await package;
+
+                    await using Stream stream = content;
+                    string outputFilePath = Path.Combine(OutputDirectory.FullName, name);
+                    await using FileStream fileStream = new FileStream(outputFilePath, FileMode.Create);
+                    await stream.CopyToAsync(fileStream, context.GetCancellationToken());
+
+                    logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", name, OutputDirectory.FullName);
+                    nbrOfPackages++;
                 }
 
-                await using Stream stream = package.Content;
-                await using FileStream fileStream = new FileStream(Path.Combine(OutputDirectory.FullName, package.Name), FileMode.Create);
-                await stream.CopyToAsync(fileStream, context.GetCancellationToken());
-
-                logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", package.Name, OutputDirectory.FullName);
+                if (nbrOfPackages == 0)
+                {
+                    logger.LogError("No packages found for the provided tags.");
+                    return (int)ExitCodes.Fail;
+                }
 
                 return (int)ExitCodes.Ok;
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Failed to download the package.");
+                logger.LogError(e, "Failed to download the packages.");
                 return (int)ExitCodes.UnexpectedException;
             }
             finally

@@ -1,5 +1,5 @@
 ﻿// ReSharper disable ClassNeverInstantiated.Global
-namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
+namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.Download
 {
     using System;
     using System.CommandLine;
@@ -12,15 +12,16 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     using Microsoft.Extensions.Logging;
 
     using Skyline.DataMiner.CICD.FileSystem.DirectoryInfoWrapper;
+    using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands.BaseCommands;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Lib.Services;
     using Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.SystemCommandLine;
 
-    internal class DownloadByTagCommand : DownloadByTagBaseCommand
+    internal class DownloadLatestByTagCommand : DownloadByTagBaseCommand
     {
-        public DownloadByTagCommand() :
-            base(name: "by-tag", description: "Download dmupgrade packages filtered on tags.")
+        public DownloadLatestByTagCommand() :
+            base(name: "latest-by-tag", description: "Download the latest dmupgrade package filtered on tags.")
         {
             AddOption(new Option<IDirectoryInfoIO>(
                 aliases: ["--output-directory", "-od"],
@@ -33,14 +34,9 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Automatic binding with System.CommandLine.NamingConventionBinder")]
-    internal class DownloadByTagCommandHandler(ILogger<DownloadByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
+    internal class DownloadLatestByTagCommandHandler(ILogger<DownloadLatestByTagCommandHandler> logger, IDmUpgradeStorageService storageService) : DownloadByTagBaseCommandHandler
     {
         public required IDirectoryInfoIO OutputDirectory { get; set; }
-
-        public override int Invoke(InvocationContext context)
-        {
-            return (int)ExitCodes.NotImplemented;
-        }
 
         public override async Task<int> InvokeAsync(InvocationContext context)
         {
@@ -58,27 +54,20 @@ namespace Skyline.DataMiner.CICD.Tools.DmUpgradeStorage.Commands
                 // Create a filter to get the latest package
                 PackageTagFilter builder = GetFilter();
 
-                var packages = storageService.DownloadPackagesByTagsAsync(builder, context.GetCancellationToken());
+                var package = await storageService.DownloadLatestByTagsAsync(builder, context.GetCancellationToken());
 
-                int nbrOfPackages = 0;
-                await foreach (var package in packages)
+                if (package == null)
                 {
-                    (string? name, Stream? content) = await package;
-
-                    await using Stream stream = content;
-                    string outputFilePath = Path.Combine(OutputDirectory.FullName, name);
-                    await using FileStream fileStream = new FileStream(outputFilePath, FileMode.Create);
-                    await stream.CopyToAsync(fileStream, context.GetCancellationToken());
-
-                    logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", name, OutputDirectory.FullName);
-                    nbrOfPackages++;
-                }
-
-                if (nbrOfPackages == 0)
-                {
-                    logger.LogError("No packages found for the provided tags.");
+                    logger.LogError("No package found for the provided filters");
                     return (int)ExitCodes.Fail;
                 }
+
+                await using Stream stream = package.Content;
+                string outputFilePath = Path.Combine(OutputDirectory.FullName, package.Name);
+                await using FileStream fileStream = new FileStream(outputFilePath, FileMode.Create);
+                await stream.CopyToAsync(fileStream, context.GetCancellationToken());
+
+                logger.LogInformation("Downloaded package {packageName} to {outputDirectory}.", package.Name, OutputDirectory.FullName);
 
                 return (int)ExitCodes.Ok;
             }
